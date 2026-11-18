@@ -4,6 +4,8 @@ import com.accenture.sast.tracker.model.Employee;
 import com.accenture.sast.tracker.service.EmployeeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -54,17 +56,68 @@ public class EmployeeController {
     // returning sensitive fields.
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/{id}/profile")
-    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id,
+            Authentication authentication) {
+
+        /*
+         * Spring Security populates Authentication from the authenticated
+         * HTTP session or from a validated bearer token.
+         */
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getName())) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "message",
+                            "Authentication is required"
+                    ));
+        }
+
+        // Check if the user has the "ADMIN" role
+        if (!authentication.getAuthorities().stream()
+                .anyMatch(a -> "ADMIN".equals(a.getAuthority()))) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "message",
+                            "Access denied"
+                    ));
+        }
+
         Optional<Employee> opt = service.findById(id);
+        
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         Employee e = opt.get();
+        String callerUsername = authentication.getName();
+
+        boolean isOwner =
+                callerUsername.equals(e.getName()); // Assuming username is stored in the name field
+
+        boolean isAdmin = authentication.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+
+        if (!isOwner && !isAdmin) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "message",
+                            "You are not authorised to view this profile"
+                    ));
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", e.getId());
         body.put("name", e.getName());
         body.put("salary", e.getSalary());
         body.put("nationalId", e.getNationalId());
+
         return ResponseEntity.ok(body);
     }
 }

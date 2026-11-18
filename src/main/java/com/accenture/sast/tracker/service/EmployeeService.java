@@ -38,14 +38,19 @@ public class EmployeeService {
     // Fix: use a parameterised query — jdbc.query(sql, ps -> ps.setString(1, name), ...)
     // ──────────────────────────────────────────────────────────────────────────
     public List<Employee> search(String name) {
-        String sql = "SELECT id, name, role, email, onboarding_date " +
-                     "FROM employee WHERE LOWER(name) LIKE '%" + name.toLowerCase() + "%'";
-        return jdbc.query(sql, (rs, row) -> {
+        String sql = "SELECT id, name, role, email, onboarding_date FROM employee WHERE LOWER(name) LIKE ?";
+
+        String searchName = "%" + name.toLowerCase() + "%";
+
+        return jdbc.query(sql, (rs, rowNum) -> {
             Employee e = new Employee();
+            
             e.setName(rs.getString("name"));
             e.setRole(rs.getString("role"));
             e.setEmail(rs.getString("email"));
+            e.setOnboardingDate(rs.getDate("onboarding_date").toLocalDate());
+            
             return e;
-        });
+        }, searchName);
     }
 }

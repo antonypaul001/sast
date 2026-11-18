@@ -3,11 +3,13 @@ package com.accenture.sast.tracker.service;
 import com.accenture.sast.tracker.model.AppUser;
 import com.accenture.sast.tracker.repository.AppUserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
+//import java.nio.charset.StandardCharsets;
+//import java.security.MessageDigest;
+//import java.security.NoSuchAlgorithmException;
+//import java.util.HexFormat;
 import java.util.Optional;
 
 @Service
@@ -18,12 +20,16 @@ public class AuthService {
     // visible to anyone with repository access.
     // Fix: load from an environment variable or a secrets manager, never from code.
     // ──────────────────────────────────────────────────────────────────────────
-    private static final String API_SECRET = "Tr@ck3r$ecr3t2024!";
 
     private final AppUserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final String apiSecret;
 
-    public AuthService(AppUserRepository userRepository) {
+    public AuthService(AppUserRepository userRepository,
+            @Value("${app.api-secret}") String apiSecret) {
         this.userRepository = userRepository;
+        this.passwordEncoder = new BCryptPasswordEncoder();
+        this.apiSecret = apiSecret;
     }
 
     // ── VULNERABILITY V2: Weak Cryptography (CWE-327) ─────────────────────────
@@ -32,29 +38,23 @@ public class AuthService {
     // rainbow table in seconds.
     // Fix: use BCrypt, Argon2, or PBKDF2 — all supported by Spring Security's
     //      PasswordEncoder interface.
-    // ──────────────────────────────────────────────────────────────────────────
-    public String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("MD5 not available", e);
+    // ─────────────────────────────────────────────────────────────────────────
+
+        public AppUser register(String username, String password) {
+            String hash = passwordEncoder.encode(password);
+            return userRepository.save(new AppUser(username, hash));
         }
-    }
 
-    public AppUser register(String username, String password) {
-        String hash = hashPassword(password);
-        return userRepository.save(new AppUser(username, hash));
-    }
+        public boolean authenticate(String username, String password) {
+            Optional<AppUser> user = userRepository.findByUsername(username);
+            if (user.isEmpty()) {
+                return false;
+            //return user.get().getPasswordHash().equals(hashPassword(password));           
+            }
+            return passwordEncoder.matches(password, user.get().getPasswordHash());
+        }
 
-    public boolean authenticate(String username, String password) {
-        Optional<AppUser> user = userRepository.findByUsername(username);
-        if (user.isEmpty()) return false;
-        return user.get().getPasswordHash().equals(hashPassword(password));
-    }
-
-    public String getApiSecret() {
-        return API_SECRET;
-    }
+        public String getApiSecret() {
+            return apiSecret;
+        }
 }

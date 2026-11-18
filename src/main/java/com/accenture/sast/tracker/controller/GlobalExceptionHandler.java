@@ -1,5 +1,7 @@
 package com.accenture.sast.tracker.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,11 +22,19 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleAll(Exception ex) {
+
+        // Keep detailed error information on the server
+        log.error("Unexpected application error", ex);
+
+        // Return only generic information to the client
         Map<String, String> body = new LinkedHashMap<>();
-        body.put("error", ex.getClass().getName());
-        body.put("message", ex.getMessage() != null ? ex.getMessage() : "");
+        body.put("error", "Internal Server Error");
+        body.put("message", "An unexpected error occurred.");
+        
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

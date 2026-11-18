@@ -7,15 +7,16 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/reports")
 public class ReportController {
 
-    private static final String REPORT_DIR = "C:/reports/";
+    private static final Path REPORT_DIR = Paths.get("C:/reports").toAbsolutePath().normalize();
 
     // ── VULNERABILITY V5: Path Traversal (CWE-22) ────────────────────────────
     // The filename parameter is used directly when building the File path.
@@ -27,15 +28,29 @@ public class ReportController {
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/download")
     public ResponseEntity<Resource> download(@RequestParam String filename) throws IOException {
-        File file = new File(REPORT_DIR + filename);
+        
+        // Resolve the requested filename against REPORT_DIR
+        Path filePath = REPORT_DIR.resolve(filename)
+                .normalize()
+                .toAbsolutePath();
 
-        if (!file.exists()) {
+        // Security check: file must remain inside REPORT_DIR        
+        if (!filePath.startsWith(REPORT_DIR)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // Check it exists and is a regular file
+        if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
             return ResponseEntity.notFound().build();
         }
 
-        byte[] content = Files.readAllBytes(file.toPath());
+        byte[] content = Files.readAllBytes(filePath);
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filePath.getFileName() + "\""
+                )
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(new ByteArrayResource(content));
     }
