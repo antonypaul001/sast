@@ -12,13 +12,6 @@ import java.util.Optional;
 @Service
 public class AuthService {
 
-    // ── VULNERABILITY V3: Hardcoded Secret (CWE-798) ──────────────────────────
-    // A secret embedded in source code is committed to version control and
-    // visible to anyone with repository access.
-    // Fix: load from an environment variable or a secrets manager, never from code.
-    // ──────────────────────────────────────────────────────────────────────────
-    //private static final String API_SECRET = "Tr@ck3r$ecr3t2024!";
-
     private final String apiSecret;
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -31,13 +24,6 @@ public class AuthService {
         this.apiSecret = apiSecret;
     }
 
-    // ── VULNERABILITY V2: Weak Cryptography (CWE-327) ─────────────────────────
-    // MD5 is a broken hash function: it is fast to compute and has known collision
-    // attacks. Passwords hashed with MD5 can be cracked from a 10-billion-entry
-    // rainbow table in seconds.
-    // Fix: use BCrypt, Argon2, or PBKDF2 — all supported by Spring Security's
-    // PasswordEncoder interface.
-    // ──────────────────────────────────────────────────────────────────────────
     public String hashPassword(String password) {
         return passwordEncoder.encode(password);
     }
