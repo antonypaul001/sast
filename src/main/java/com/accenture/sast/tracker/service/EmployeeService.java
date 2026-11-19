@@ -5,6 +5,7 @@ import com.accenture.sast.tracker.repository.EmployeeRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,21 +32,21 @@ public class EmployeeService {
         return repository.findById(id);
     }
 
-    // ── VULNERABILITY V1: SQL Injection (CWE-89) ──────────────────────────────
-    // The name parameter is concatenated directly into the SQL string.
-    // An attacker can supply: ' OR '1'='1  to return all rows, or craft a
-    // UNION-based payload to read arbitrary data.
-    // Fix: use a parameterised query — jdbc.query(sql, ps -> ps.setString(1, name), ...)
-    // ──────────────────────────────────────────────────────────────────────────
     public List<Employee> search(String name) {
-        String sql = "SELECT id, name, role, email, onboarding_date " +
-                     "FROM employee WHERE LOWER(name) LIKE '%" + name.toLowerCase() + "%'";
-        return jdbc.query(sql, (rs, row) -> {
-            Employee e = new Employee();
-            e.setName(rs.getString("name"));
-            e.setRole(rs.getString("role"));
-            e.setEmail(rs.getString("email"));
-            return e;
-        });
+        final String sql = """
+                SELECT id, name, role, email, onboarding_date
+                FROM employee WHERE LOWER(name) LIKE ?
+                """;
+        return jdbc.query(
+                sql,
+                (rs, row) -> {
+                    Employee e = new Employee();
+                    e.setName(rs.getString("name"));
+                    e.setRole(rs.getString("role"));
+                    e.setEmail(rs.getString("email"));
+                    return e;
+                },
+                MessageFormat.format("%{0}%", name.toLowerCase())
+        );
     }
 }
