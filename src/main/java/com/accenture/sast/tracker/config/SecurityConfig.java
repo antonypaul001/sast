@@ -13,6 +13,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/employees/*/profile").hasRole("ADMIN")
                 .anyRequest().permitAll()
             );
 

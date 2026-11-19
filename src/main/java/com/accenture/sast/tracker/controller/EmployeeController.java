@@ -1,15 +1,24 @@
 package com.accenture.sast.tracker.controller;
 
-import com.accenture.sast.tracker.model.Employee;
-import com.accenture.sast.tracker.service.EmployeeService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.accenture.sast.tracker.model.Employee;
+import com.accenture.sast.tracker.service.EmployeeService;
 
 @RestController
 @RequestMapping("/api/employees")
@@ -44,17 +53,16 @@ public class EmployeeController {
         return service.search(name);
     }
 
-    // ── VULNERABILITY V7: Insecure Direct Object Reference (CWE-639) ─────────
-    // Any caller can retrieve any employee's salary and national ID by supplying
-    // an employee ID. There is no check that the requester is authorised to view
-    // that specific employee's sensitive data. Incrementing the id exposes every
-    // record in the system.
-    // Fix: extract the caller's identity from a session or bearer token and verify
-    // that the requesting user either owns the record or holds an admin role before
-    // returning sensitive fields.
-    // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/{id}/profile")
-    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id, Authentication authentication) {
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority -> authority.equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         Optional<Employee> opt = service.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
