@@ -2,28 +2,21 @@ package com.accenture.sast.tracker.service;
 
 import com.accenture.sast.tracker.model.AppUser;
 import com.accenture.sast.tracker.repository.AppUserRepository;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
-    // ── VULNERABILITY V3: Hardcoded Secret (CWE-798) ──────────────────────────
-    // A secret embedded in source code is committed to version control and
-    // visible to anyone with repository access.
-    // Fix: load from an environment variable or a secrets manager, never from code.
-    // ──────────────────────────────────────────────────────────────────────────
-    private static final String API_SECRET = "Tr@ck3r$ecr3t2024!";
-
+    @Getter
+    @Value("${tracker.api.secret}")
+    private final String apiSecret;
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
-    public AuthService(AppUserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
     public String hashPassword(String password) {
         return passwordEncoder.encode(password);
@@ -35,12 +28,9 @@ public class AuthService {
     }
 
     public boolean authenticate(String username, String password) {
-        Optional<AppUser> user = userRepository.findByUsername(username);
-        if (user.isEmpty()) return false;
-        return passwordEncoder.matches(password, user.get().getPasswordHash());
+        return userRepository.findByUsername(username)
+                .filter(entity -> passwordEncoder.matches(password, entity.getPasswordHash()))
+                .isPresent();
     }
 
-    public String getApiSecret() {
-        return API_SECRET;
-    }
 }
