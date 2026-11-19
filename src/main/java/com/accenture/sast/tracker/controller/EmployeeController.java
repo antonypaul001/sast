@@ -4,6 +4,8 @@ import com.accenture.sast.tracker.model.Employee;
 import com.accenture.sast.tracker.service.EmployeeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -52,14 +54,26 @@ public class EmployeeController {
     // Fix: extract the caller's identity from a session or bearer token and verify
     // that the requesting user either owns the record or holds an admin role before
     // returning sensitive fields.
-    // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/{id}/profile")
     public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id) {
         Optional<Employee> opt = service.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         Employee e = opt.get();
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        boolean isAdmin = auth.getAuthorities().stream()
+            .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        // presumption that the employee email is the user's login username for auth
+        boolean isOwner = e.getEmail().equalsIgnoreCase(auth.getName());
+
+        if (!isOwner && !isAdmin) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", e.getId());
         body.put("name", e.getName());
