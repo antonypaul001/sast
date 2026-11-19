@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -78,8 +79,11 @@ class EmployeeControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    // for vulnerability 7, have edited test and provided 2 more to confirm
+    // ownership and admin status both work
     @Test
-    void getProfile_returnsProfile() throws Exception {
+    @WithMockUser (username = "alice@example.com", password = "pass")
+    void getProfileAsOwner_returnsProfile() throws Exception {
         Employee emp = new Employee("Alice Smith", "Engineer", "alice@example.com", LocalDate.of(2026, 12, 1));
         emp.setSalary(new BigDecimal("95000"));
         emp.setNationalId("NI-123456");
@@ -90,6 +94,32 @@ class EmployeeControllerTest {
                 .andExpect(jsonPath("$.name").value("Alice Smith"))
                 .andExpect(jsonPath("$.salary").value(95000))
                 .andExpect(jsonPath("$.nationalId").value("NI-123456"));
+    }
+
+    @Test
+    @WithMockUser (roles = "ADMIN")
+    void getProfileAsAdmin_returnsProfile() throws Exception {
+        Employee emp = new Employee("Alice Smith", "Engineer", "alice@example.com", LocalDate.of(2026, 12, 1));
+        emp.setSalary(new BigDecimal("95000"));
+        emp.setNationalId("NI-123456");
+        Employee saved = repo.save(emp);
+
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Alice Smith"))
+                .andExpect(jsonPath("$.salary").value(95000))
+                .andExpect(jsonPath("$.nationalId").value("NI-123456"));
+    }
+
+    @Test
+    void getProfilewithoutAuth_returnsForbidden() throws Exception {
+        Employee emp = new Employee("Alice Smith", "Engineer", "alice@example.com", LocalDate.of(2026, 12, 1));
+        emp.setSalary(new BigDecimal("95000"));
+        emp.setNationalId("NI-123456");
+        Employee saved = repo.save(emp);
+
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

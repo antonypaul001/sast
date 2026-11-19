@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -27,6 +30,9 @@ public class ReportController {
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/download")
     public ResponseEntity<Resource> download(@RequestParam String filename) throws IOException {
+        Path resolved = Paths.get(REPORT_DIR).resolve(filename).normalize();
+        if (!resolved.startsWith(Paths.get(REPORT_DIR))) throw new InvalidPathException(filename, "The path directory does not point to the reports directory");
+
         File file = new File(REPORT_DIR + filename);
 
         if (!file.exists()) {

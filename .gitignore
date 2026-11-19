@@ -7,3 +7,5 @@ out/
 .idea/
 *.iml
 .vscode/
+.env
+launch.json
