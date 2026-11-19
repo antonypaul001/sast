@@ -4,6 +4,7 @@ import com.accenture.sast.tracker.model.AppUser;
 import com.accenture.sast.tracker.repository.AppUserRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -16,14 +17,18 @@ public class AuthService {
     // visible to anyone with repository access.
     // Fix: load from an environment variable or a secrets manager, never from code.
     // ──────────────────────────────────────────────────────────────────────────
-    private static final String API_SECRET = "Tr@ck3r$ecr3t2024!";
+    //private static final String API_SECRET = "Tr@ck3r$ecr3t2024!";
 
+    private final String apiSecret;
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthService(AppUserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(AppUserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            @Value("${API_SECRET}") String apiSecret) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.apiSecret = apiSecret;
     }
 
     // ── VULNERABILITY V2: Weak Cryptography (CWE-327) ─────────────────────────
@@ -50,6 +55,6 @@ public class AuthService {
     }
 
     public String getApiSecret() {
-        return API_SECRET;
+        return apiSecret;
     }
 }
