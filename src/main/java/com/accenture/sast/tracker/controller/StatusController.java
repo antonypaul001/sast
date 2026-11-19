@@ -20,7 +20,9 @@ public class StatusController {
 
     @GetMapping(value = "/api/status", produces = MediaType.TEXT_HTML_VALUE)
     public String status(@RequestParam(defaultValue = "Welcome") String message) {
-        return "<html><body><h1>" + message + "</h1>" +
+
+        String encodedMessage = org.springframework.web.util.HtmlUtils.htmlEscape(message);
+        return "<html><body><h1>" + encodedMessage + "</h1>" +
                "<p>Employee Tracker is running.</p></body></html>";
     }
 }
