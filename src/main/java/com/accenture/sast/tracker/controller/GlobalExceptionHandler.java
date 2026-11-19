@@ -23,8 +23,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleAll(Exception ex) {
         Map<String, String> body = new LinkedHashMap<>();
-        body.put("error", ex.getClass().getName());
-        body.put("message", ex.getMessage() != null ? ex.getMessage() : "");
+        body.put("error", "error");
+        body.put("message", "An unexpected error has occured");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
