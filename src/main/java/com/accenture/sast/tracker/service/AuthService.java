@@ -16,7 +16,6 @@ public class AuthService {
     // visible to anyone with repository access.
     // Fix: load from an environment variable or a secrets manager, never from code.
     // ──────────────────────────────────────────────────────────────────────────
-    private static final String API_SECRET = "Tr@ck3r$ecr3t2024!";
 
     private final AppUserRepository userRepository;
 
@@ -51,6 +50,6 @@ public class AuthService {
     }
 
     public String getApiSecret() {
-        return API_SECRET;
+        return System.getenv("JAVA_UPSKILLING_API_KEY");
     }
 }
