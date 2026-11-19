@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -85,7 +86,9 @@ class EmployeeControllerTest {
         emp.setNationalId("NI-123456");
         Employee saved = repo.save(emp);
 
-        mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
+                        .sessionAttr("userId", saved.getId())
+                        .with(user("Alice Smith")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Alice Smith"))
                 .andExpect(jsonPath("$.salary").value(95000))
@@ -94,7 +97,25 @@ class EmployeeControllerTest {
 
     @Test
     void getProfile_notFound_returns404() throws Exception {
-        mvc.perform(get("/api/employees/9999/profile"))
+        mvc.perform(get("/api/employees/9999/profile")
+                        .sessionAttr("userId", 9999L)
+                        .with(user("Alice Smith")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getProfile_otherUsersProfile_returns403() throws Exception {
+        Employee saved = repo.save(new Employee("Bob Jones", "Analyst", "bob@example.com", LocalDate.of(2026, 12, 5)));
+
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
+                        .sessionAttr("userId", saved.getId() + 1)
+                        .with(user("Alice Smith")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getProfile_notLoggedIn_returns401() throws Exception {
+        mvc.perform(get("/api/employees/1/profile"))
+                .andExpect(status().isUnauthorized());
     }
 }
