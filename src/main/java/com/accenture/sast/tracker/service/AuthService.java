@@ -3,11 +3,9 @@ package com.accenture.sast.tracker.service;
 import com.accenture.sast.tracker.model.AppUser;
 import com.accenture.sast.tracker.repository.AppUserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Optional;
 
 @Service
@@ -33,14 +31,10 @@ public class AuthService {
     // Fix: use BCrypt, Argon2, or PBKDF2 — all supported by Spring Security's
     //      PasswordEncoder interface.
     // ──────────────────────────────────────────────────────────────────────────
+
     public String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("MD5 not available", e);
-        }
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        return passwordEncoder.encode(password);
     }
 
     public AppUser register(String username, String password) {
@@ -51,7 +45,9 @@ public class AuthService {
     public boolean authenticate(String username, String password) {
         Optional<AppUser> user = userRepository.findByUsername(username);
         if (user.isEmpty()) return false;
-        return user.get().getPasswordHash().equals(hashPassword(password));
+
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        return passwordEncoder.matches(password, user.get().getPasswordHash());
     }
 
     public String getApiSecret() {
