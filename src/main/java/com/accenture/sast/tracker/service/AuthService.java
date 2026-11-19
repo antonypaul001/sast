@@ -54,6 +54,12 @@ public class AuthService {
         return passwordEncoder.matches(password, user.get().getPasswordHash());
     }
 
+    public Long findUserId(String username) {
+        return userRepository.findByUsername(username)
+                .map(AppUser::getId)
+                .orElse(-1L);
+    }
+
     public String getApiSecret() {
         return apiSecret;
     }
