@@ -14,7 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class StatusControllerTest {
 
-    @Autowired MockMvc mvc;
+    @Autowired
+    MockMvc mvc;
 
     @Test
     void status_defaultMessage_returnsHtml() throws Exception {
@@ -29,5 +30,24 @@ class StatusControllerTest {
         mvc.perform(get("/api/status").param("message", "Hello World"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Hello World")));
+    }
+
+    @Test
+    void status_messageEscapedInHtml() throws Exception {
+        String maliciousMessage = "<script>alert('xss')</script>";
+        String expectedString = "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;";
+
+        mvc.perform(get("/api/status").param("message", maliciousMessage))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(expectedString)));
+    }
+
+    @Test
+    void status_setsContentSecurityPolicyHeader() throws Exception {
+        String expectedCsp = "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'";
+
+        mvc.perform(get("/api/status"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Security-Policy", expectedCsp));
     }
 }
