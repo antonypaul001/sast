@@ -7,9 +7,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -23,20 +24,33 @@ public class ReportController {
     // to read any file the process has access to, regardless of REPORT_DIR.
     // Fix: resolve the path, then verify it starts with REPORT_DIR:
     //   Path resolved = Paths.get(REPORT_DIR).resolve(filename).normalize();
-    //   if (!resolved.startsWith(Paths.get(REPORT_DIR))) throw new ...;
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/download")
-    public ResponseEntity<Resource> download(@RequestParam String filename) throws IOException {
-        File file = new File(REPORT_DIR + filename);
+public ResponseEntity<Resource> download(@RequestParam String filename) throws IOException {
 
-        if (!file.exists()) {
-            return ResponseEntity.notFound().build();
-        }
+    Path reportDirectory = Paths.get(REPORT_DIR)
+            .toAbsolutePath()
+            .normalize();
 
-        byte[] content = Files.readAllBytes(file.toPath());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new ByteArrayResource(content));
+    Path filePath = reportDirectory.resolve(filename)
+            .normalize();
+
+    if (!filePath.startsWith(reportDirectory)) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+        return ResponseEntity.notFound().build();
+    }
+
+    byte[] content = Files.readAllBytes(filePath);
+
+    return ResponseEntity.ok()
+            .header(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + filePath.getFileName() + "\""
+            )
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .body(new ByteArrayResource(content));
     }
 }

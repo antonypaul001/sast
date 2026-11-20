@@ -14,8 +14,9 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
-@SpringBootTest
+@SpringBootTest(properties = "API_SECRET=test-only-secret")
 @AutoConfigureMockMvc
 class AuthControllerTest {
 
@@ -33,20 +34,22 @@ class AuthControllerTest {
                 "password", "pass123"
         ));
         mvc.perform(post("/api/auth/register")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registerBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("User registered"));
+                        .content(registerBody))      
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.message").value("User registered"));
 
         String loginBody = mapper.writeValueAsString(Map.of(
                 "username", "frank",
                 "password", "pass123"
         ));
         mvc.perform(post("/api/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Login successful"));
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.message").value("Login successful"));
     }
 
     @Test
@@ -56,18 +59,20 @@ class AuthControllerTest {
                 "password", "correct"
         ));
         mvc.perform(post("/api/auth/register")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerBody))
-                .andExpect(status().isOk());
+                        .andExpect(status().isOk());
 
         String loginBody = mapper.writeValueAsString(Map.of(
                 "username", "grace",
                 "password", "wrong"
         ));
         mvc.perform(post("/api/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody))
-                .andExpect(status().isUnauthorized());
+                        .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -77,8 +82,9 @@ class AuthControllerTest {
                 "password", "whatever"
         ));
         mvc.perform(post("/api/auth/login")
+                        .with(csrf())               
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody))
-                .andExpect(status().isUnauthorized());
+                        .andExpect(status().isUnauthorized());
     }
 }

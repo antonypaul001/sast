@@ -18,16 +18,26 @@ import java.util.Map;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+import com.accenture.sast.tracker.model.AppUser;
+import com.accenture.sast.tracker.repository.AppUserRepository;
+import org.springframework.mock.web.MockHttpSession;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+
+@SpringBootTest(properties = "API_SECRET=test-only-secret")
 @AutoConfigureMockMvc
 class EmployeeControllerTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired EmployeeRepository repo;
+    @Autowired AppUserRepository userRepo;
 
     @BeforeEach
-    void clean() { repo.deleteAll(); }
+    void clean() { 
+        userRepo.deleteAll();
+        repo.deleteAll();
+    }
 
     @Test
     void createEmployee_returns201() throws Exception {
@@ -38,6 +48,7 @@ class EmployeeControllerTest {
                 "onboardingDate", "2026-12-01"
         ));
         mvc.perform(post("/api/employees")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -79,22 +90,73 @@ class EmployeeControllerTest {
     }
 
     @Test
-    void getProfile_returnsProfile() throws Exception {
-        Employee emp = new Employee("Alice Smith", "Engineer", "alice@example.com", LocalDate.of(2026, 12, 1));
-        emp.setSalary(new BigDecimal("95000"));
-        emp.setNationalId("NI-123456");
-        Employee saved = repo.save(emp);
+    void getProfile_returnsProfileForAuthorisedUser() throws Exception {
+    Employee emp = new Employee(
+            "Alice Smith",
+            "Engineer",
+            "alice@example.com",
+            LocalDate.of(2026, 12, 1)
+    );
 
-        mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Alice Smith"))
-                .andExpect(jsonPath("$.salary").value(95000))
-                .andExpect(jsonPath("$.nationalId").value("NI-123456"));
+    emp.setSalary(new BigDecimal("95000"));
+    emp.setNationalId("NI-123456");
+
+    Employee saved = repo.save(emp);
+
+    AppUser user = new AppUser("alice", "test-password-hash");
+    user.setEmployee(saved);
+    userRepo.save(user);
+
+    MockHttpSession session = new MockHttpSession();
+    session.setAttribute("authenticatedUsername", "alice");
+
+    mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
+                    .session(session))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Alice Smith"))
+            .andExpect(jsonPath("$.salary").value(95000))
+            .andExpect(jsonPath("$.nationalId").value("NI-123456"));
     }
 
     @Test
-    void getProfile_notFound_returns404() throws Exception {
+    void getProfile_withoutLogin_returns403() throws Exception {
         mvc.perform(get("/api/employees/9999/profile"))
-                .andExpect(status().isNotFound());
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getProfile_forDifferentEmployee_returns403() throws Exception {
+        Employee alice = new Employee(
+            "Alice Smith",
+            "Engineer",
+            "alice@example.com",
+            LocalDate.of(2026, 12, 1)
+        );
+
+        alice.setSalary(new BigDecimal("95000"));
+        alice.setNationalId("NI-123456");
+        Employee savedAlice = repo.save(alice);
+
+        Employee bob = new Employee(
+            "Bob Jones",
+            "Analyst",
+            "bob@example.com",
+            LocalDate.of(2026, 12, 5)
+        );
+
+        bob.setSalary(new BigDecimal("80000"));
+        bob.setNationalId("NI-654321");
+        Employee savedBob = repo.save(bob);
+
+        AppUser user = new AppUser("alice", "test-password-hash");
+        user.setEmployee(savedAlice);
+        userRepo.save(user);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("authenticatedUsername", "alice");
+
+        mvc.perform(get("/api/employees/" + savedBob.getId() + "/profile")
+                    .session(session))
+            .andExpect(status().isForbidden());
     }
 }

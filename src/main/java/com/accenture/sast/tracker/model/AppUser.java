@@ -15,6 +15,10 @@ public class AppUser {
 
     private String passwordHash;
 
+    @OneToOne
+    @JoinColumn(name = "employee_id", unique = true)
+    private Employee employee;
+
     public AppUser() {}
 
     public AppUser(String username, String passwordHash) {
@@ -27,4 +31,8 @@ public class AppUser {
     public void setUsername(String username)      { this.username = username; }
     public String getPasswordHash()               { return passwordHash; }
     public void setPasswordHash(String h)         { this.passwordHash = h; }
+
+    public Employee getEmployee()                 { return employee; }
+    public void setEmployee(Employee employee)    { this.employee = employee; }
+
 }
