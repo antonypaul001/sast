@@ -1,5 +1,6 @@
 package com.accenture.sast.tracker.controller;
 
+import com.accenture.sast.tracker.config.RandomConfig;
 import com.accenture.sast.tracker.service.FileService;
 import com.accenture.sast.tracker.service.FileService.FileServiceException;
 import org.junit.jupiter.api.AfterEach;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ReportController.class)
+@Import(RandomConfig.class)
 @TestPropertySource(properties = "report.dir=temp")
 class ReportControllerTest {
 
