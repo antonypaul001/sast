@@ -4,7 +4,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.util.HtmlUtils;
+import org.springframework.http.ResponseEntity;
 // ── VULNERABILITY V8: Reflected Cross-Site Scripting (CWE-79) ────────────────
 // The message parameter is embedded directly into the HTML response body without
 // any output encoding. An attacker can inject a script payload:
@@ -14,13 +15,19 @@ import org.springframework.web.bind.annotation.RestController;
 // Fix: encode the parameter before embedding it, e.g.:
 //   org.springframework.web.util.HtmlUtils.htmlEscape(message)
 // and add a Content-Security-Policy response header to restrict script execution.
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 @RestController
 public class StatusController {
 
-    @GetMapping(value = "/api/status", produces = MediaType.TEXT_HTML_VALUE)
-    public String status(@RequestParam(defaultValue = "Welcome") String message) {
-        return "<html><body><h1>" + message + "</h1>" +
-               "<p>Employee Tracker is running.</p></body></html>";
-    }
+   @GetMapping(value = "/api/status", produces = MediaType.TEXT_HTML_VALUE)
+public ResponseEntity<String> status(@RequestParam(defaultValue = "Welcome") String message) {
+    String safeMessage = HtmlUtils.htmlEscape(message);
+
+    String html = "<html><body><h1>" + safeMessage + "</h1>" +
+            "<p>Employee Tracker is running.</p></body></html>";
+
+    return ResponseEntity.ok()
+            .header("Content-Security-Policy", "default-src 'self'; script-src 'none'")
+            .body(html);
+}
 }

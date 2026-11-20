@@ -3,7 +3,7 @@ package com.accenture.sast.tracker.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
 @Entity
 @Table(name = "employee")
 public class Employee {
@@ -18,8 +18,11 @@ public class Employee {
     private LocalDate onboardingDate;
 
     // Added for V7: IDOR — these fields are intentionally sensitive
-    private BigDecimal salary;
-    private String nationalId;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+private BigDecimal salary;
+
+@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+private String nationalId;
 
     public Employee() {}
 

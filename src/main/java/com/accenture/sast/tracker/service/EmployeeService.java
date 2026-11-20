@@ -37,15 +37,20 @@ public class EmployeeService {
     // UNION-based payload to read arbitrary data.
     // Fix: use a parameterised query — jdbc.query(sql, ps -> ps.setString(1, name), ...)
     // ──────────────────────────────────────────────────────────────────────────
-    public List<Employee> search(String name) {
-        String sql = "SELECT id, name, role, email, onboarding_date " +
-                     "FROM employee WHERE LOWER(name) LIKE '%" + name.toLowerCase() + "%'";
-        return jdbc.query(sql, (rs, row) -> {
-            Employee e = new Employee();
-            e.setName(rs.getString("name"));
-            e.setRole(rs.getString("role"));
-            e.setEmail(rs.getString("email"));
-            return e;
-        });
-    }
+   
+public List<Employee> search(String name) {
+    String sql = "SELECT id, name, role, email, onboarding_date " +
+                 "FROM employee WHERE LOWER(name) LIKE ?";
+
+    String searchPattern = "%" + name.toLowerCase() + "%";
+
+    return jdbc.query(sql, (rs, row) -> {
+        Employee e = new Employee();
+        e.setName(rs.getString("name"));
+        e.setRole(rs.getString("role"));
+        e.setEmail(rs.getString("email"));
+        return e;
+    }, searchPattern);
+}
+
 }
