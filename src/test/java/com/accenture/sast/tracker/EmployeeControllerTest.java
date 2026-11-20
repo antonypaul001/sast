@@ -88,8 +88,8 @@ class EmployeeControllerTest {
         mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Alice Smith"))
-                .andExpect(jsonPath("$.salary").value(95000))
-                .andExpect(jsonPath("$.nationalId").value("NI-123456"));
+                .andExpect(jsonPath("$.salary").doesNotExist())
+                .andExpect(jsonPath("$.nationalId").doesNotExist());
     }
 
     @Test
