@@ -1,25 +1,31 @@
 package com.accenture.sast.tracker;
 
-import com.accenture.sast.tracker.model.Employee;
-import com.accenture.sast.tracker.repository.EmployeeRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Map;
+import com.accenture.sast.tracker.model.Employee;
+import com.accenture.sast.tracker.repository.EmployeeRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-@SpringBootTest
+@SpringBootTest(properties = "API_SECRET=test-secret")
 @AutoConfigureMockMvc
+@WithMockUser(username = "user", roles = "USER")
 class EmployeeControllerTest {
 
     @Autowired MockMvc mvc;
@@ -78,6 +84,7 @@ class EmployeeControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    @WithMockUser(username = "admin", roles = "ADMIN")
     @Test
     void getProfile_returnsProfile() throws Exception {
         Employee emp = new Employee("Alice Smith", "Engineer", "alice@example.com", LocalDate.of(2026, 12, 1));
@@ -92,9 +99,24 @@ class EmployeeControllerTest {
                 .andExpect(jsonPath("$.nationalId").value("NI-123456"));
     }
 
+    @WithMockUser(username = "admin", roles = "ADMIN")
     @Test
     void getProfile_notFound_returns404() throws Exception {
         mvc.perform(get("/api/employees/9999/profile"))
                 .andExpect(status().isNotFound());
+    }
+
+    @WithAnonymousUser
+    @Test
+    void getProfile_unauthenticated_returns401() throws Exception {
+        mvc.perform(get("/api/employees/9999/profile"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @WithMockUser(username = "user", roles = "USER")
+    @Test
+    void getProfile_unauthorizedUser_returns403() throws Exception {
+        mvc.perform(get("/api/employees/9999/profile"))
+                .andExpect(status().isForbidden());
     }
 }
