@@ -1,5 +1,6 @@
 package com.accenture.sast.tracker.controller;
 
+import com.accenture.sast.tracker.security.JwtService;
 import com.accenture.sast.tracker.service.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +16,11 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtService jwtService) {
         this.authService = authService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/register")
@@ -36,8 +39,9 @@ public class AuthController {
         log.info("Login attempt: username={}", username);
 
         if (authService.authenticate(username, password)) {
+            String token = jwtService.generateToken(username, authService.getRolesForUser(username));
             return ResponseEntity.ok(Map.of("message", "Login successful",
-                                             "token", authService.getApiSecret()));
+                                             "token", token));
         }
         return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
     }

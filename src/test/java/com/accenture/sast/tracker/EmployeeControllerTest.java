@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = "API_SECRET=test-secret")
 @AutoConfigureMockMvc
+@WithMockUser(username = "user", roles = "USER")
 class EmployeeControllerTest {
 
     @Autowired MockMvc mvc;
@@ -104,8 +106,16 @@ class EmployeeControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @WithAnonymousUser
     @Test
-    void getProfile_unauthenticated_returns403() throws Exception {
+    void getProfile_unauthenticated_returns401() throws Exception {
+        mvc.perform(get("/api/employees/9999/profile"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @WithMockUser(username = "user", roles = "USER")
+    @Test
+    void getProfile_unauthorizedUser_returns403() throws Exception {
         mvc.perform(get("/api/employees/9999/profile"))
                 .andExpect(status().isForbidden());
     }

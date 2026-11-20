@@ -1,5 +1,6 @@
 package com.accenture.sast.tracker.controller;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,11 +8,11 @@ import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,6 +23,7 @@ import com.accenture.sast.tracker.service.EmployeeService;
 
 @RestController
 @RequestMapping("/api/employees")
+@PreAuthorize("isAuthenticated()")
 public class EmployeeController {
 
     private final EmployeeService service;
@@ -54,15 +56,8 @@ public class EmployeeController {
     }
 
     @GetMapping("/{id}/profile")
-    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id, Authentication authentication) {
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(authority -> authority.equals("ROLE_ADMIN"));
-
-        if (!isAdmin) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
+    @PreAuthorize("hasRole('ADMIN')") // stricter rule for sensitive profile endpoint
+    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id) {
         Optional<Employee> opt = service.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -75,4 +70,25 @@ public class EmployeeController {
         body.put("nationalId", e.getNationalId());
         return ResponseEntity.ok(body);
     }
+
+    // New profile update endpoint
+    @PutMapping("/{id}/profile")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Employee> updateProfile(
+            @PathVariable Long id,
+            @RequestBody ProfileUpdateRequest request) {
+        if (request.salary() != null && request.salary().signum() < 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return service.findById(id)
+                .map(employee -> {
+                    employee.setSalary(request.salary());
+                    employee.setNationalId(request.nationalId());
+                    return ResponseEntity.ok(service.save(employee));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    public record ProfileUpdateRequest(BigDecimal salary, String nationalId) {}
 }

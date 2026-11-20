@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "employee")
 public class Employee {
@@ -17,17 +19,22 @@ public class Employee {
     private String email;
     private LocalDate onboardingDate;
 
-    // Added for V7: IDOR — these fields are intentionally sensitive
     private BigDecimal salary;
     private String nationalId;
 
     public Employee() {}
 
     public Employee(String name, String role, String email, LocalDate onboardingDate) {
+        this(name, role, email, onboardingDate, null, null);
+    }
+
+    public Employee(String name, String role, String email, LocalDate onboardingDate, BigDecimal salary, String nationalId) {
         this.name = name;
         this.role = role;
         this.email = email;
         this.onboardingDate = onboardingDate;
+        this.salary = salary;
+        this.nationalId = nationalId;
     }
 
     public Long getId()                       { return id; }
@@ -39,8 +46,12 @@ public class Employee {
     public void setEmail(String email)        { this.email = email; }
     public LocalDate getOnboardingDate()      { return onboardingDate; }
     public void setOnboardingDate(LocalDate d){ this.onboardingDate = d; }
+
+    @JsonIgnore
     public BigDecimal getSalary()             { return salary; }
     public void setSalary(BigDecimal salary)  { this.salary = salary; }
+
+    @JsonIgnore
     public String getNationalId()             { return nationalId; }
     public void setNationalId(String id)      { this.nationalId = id; }
 }

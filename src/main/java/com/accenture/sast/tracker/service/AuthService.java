@@ -1,12 +1,14 @@
 package com.accenture.sast.tracker.service;
 
 import com.accenture.sast.tracker.model.AppUser;
+import com.accenture.sast.tracker.model.Role;
 import com.accenture.sast.tracker.repository.AppUserRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -38,6 +40,19 @@ public class AuthService {
         if (user.isEmpty())
             return false;
         return passwordEncoder.matches(password, user.get().getPasswordHash());
+    }
+
+    public List<String> getRolesForUser(String username) {
+        Optional<AppUser> user = userRepository.findByUsername(username);
+        if (user.isEmpty()) {
+            return List.of();
+        }
+
+        Role role = user.get().getRole();
+        if (role == Role.ADMIN) {
+            return List.of("ROLE_USER", "ROLE_ADMIN");
+        }
+        return List.of("ROLE_USER");
     }
 
     public String getApiSecret() {
