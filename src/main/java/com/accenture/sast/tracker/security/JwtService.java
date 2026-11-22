@@ -2,15 +2,14 @@ package com.accenture.sast.tracker.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Key;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -19,7 +18,7 @@ import java.util.List;
 @Service
 public class JwtService {
 
-    private final Key signingKey;
+    private final SecretKey signingKey;
 
     public JwtService(@Value("${API_SECRET}") String apiSecret) {
         this.signingKey = buildKey(apiSecret);
@@ -30,11 +29,11 @@ public class JwtService {
         Instant expiry = now.plus(1, ChronoUnit.HOURS);
 
         return Jwts.builder()
-                .setSubject(username)
+                .subject(username)
                 .claim("roles", roles)
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(expiry))
-                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .signWith(signingKey)
                 .compact();
     }
 
@@ -61,14 +60,14 @@ public class JwtService {
     }
 
     private Claims extractClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(signingKey)
+        return Jwts.parser()
+                .verifyWith(signingKey)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
-    private Key buildKey(String secret) {
+    private SecretKey buildKey(String secret) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] keyBytes = digest.digest(secret.getBytes(StandardCharsets.UTF_8));

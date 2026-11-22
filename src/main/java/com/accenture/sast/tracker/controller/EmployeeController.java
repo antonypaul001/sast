@@ -1,6 +1,7 @@
 package com.accenture.sast.tracker.controller;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,12 @@ public class EmployeeController {
     }
 
     @PostMapping
-    public ResponseEntity<Employee> create(@RequestBody Employee employee) {
+    public ResponseEntity<Employee> create(@RequestBody CreateEmployeeRequest request) {
+        Employee employee = new Employee(
+                request.name(),
+                request.role(),
+                request.email(),
+                request.onboardingDate());
         return ResponseEntity.status(HttpStatus.CREATED).body(service.save(employee));
     }
 
@@ -89,6 +95,12 @@ public class EmployeeController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    public record CreateEmployeeRequest(
+            String name,
+            String role,
+            String email,
+            LocalDate onboardingDate) {}
 
     public record ProfileUpdateRequest(BigDecimal salary, String nationalId) {}
 }
