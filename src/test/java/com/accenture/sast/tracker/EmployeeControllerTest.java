@@ -1,24 +1,28 @@
 package com.accenture.sast.tracker;
 
-import com.accenture.sast.tracker.model.Employee;
-import com.accenture.sast.tracker.repository.EmployeeRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+import com.accenture.sast.tracker.model.Employee;
+import com.accenture.sast.tracker.repository.EmployeeRepository;
+import tools.jackson.databind.ObjectMapper;
+
+@SpringBootTest(properties = "API_SECRET=test-secret")
 @AutoConfigureMockMvc
 class EmployeeControllerTest {
 
@@ -31,15 +35,8 @@ class EmployeeControllerTest {
 
     @Test
     void createEmployee_returns201() throws Exception {
-        String body = mapper.writeValueAsString(Map.of(
-                "name", "Alice Smith",
-                "role", "Engineer",
-                "email", "alice@example.com",
-                "onboardingDate", "2026-12-01"
-        ));
-        mvc.perform(post("/api/employees")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        String body = mapper.writeValueAsString(Map.of("name", "Alice Smith", "role", "Engineer", "email", "alice@example.com", "onboardingDate", "2026-12-01"));
+        mvc.perform(post("/api/employees").with(user("user").roles("USER")).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Alice Smith"));
     }
@@ -47,35 +44,28 @@ class EmployeeControllerTest {
     @Test
     void listEmployees_returnsAll() throws Exception {
         repo.save(new Employee("Bob Jones", "Analyst", "bob@example.com", LocalDate.of(2026, 12, 5)));
-        repo.save(new Employee("Carol Lee",  "Manager", "carol@example.com", LocalDate.of(2026, 12, 10)));
-
-        mvc.perform(get("/api/employees"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+        repo.save(new Employee("Carol Lee", "Manager", "carol@example.com", LocalDate.of(2026, 12, 10)));
+        mvc.perform(get("/api/employees").with(user("user").roles("USER")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
     void getById_notFound_returns404() throws Exception {
-        mvc.perform(get("/api/employees/9999"))
-                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/employees/9999").with(user("user").roles("USER"))).andExpect(status().isNotFound());
     }
 
     @Test
     void searchByName_returnsMatchingEmployee() throws Exception {
         repo.save(new Employee("Diana Prince", "Developer", "diana@example.com", LocalDate.of(2026, 12, 15)));
-        repo.save(new Employee("Eve Adams",    "Tester",    "eve@example.com",   LocalDate.of(2026, 12, 20)));
-
-        mvc.perform(get("/api/employees/search").param("name", "diana"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Diana Prince"));
+        repo.save(new Employee("Eve Adams", "Tester", "eve@example.com", LocalDate.of(2026, 12, 20)));
+        mvc.perform(get("/api/employees/search").with(user("user").roles("USER")).param("name", "diana"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].name").value("Diana Prince"));
     }
 
     @Test
     void searchByName_noMatch_returnsEmptyList() throws Exception {
-        mvc.perform(get("/api/employees/search").param("name", "nobody"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/employees/search").with(user("user").roles("USER")).param("name", "nobody"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
@@ -84,17 +74,23 @@ class EmployeeControllerTest {
         emp.setSalary(new BigDecimal("95000"));
         emp.setNationalId("NI-123456");
         Employee saved = repo.save(emp);
-
-        mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Alice Smith"))
-                .andExpect(jsonPath("$.salary").value(95000))
-                .andExpect(jsonPath("$.nationalId").value("NI-123456"));
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Alice Smith"))
+                .andExpect(jsonPath("$.salary").value(95000)).andExpect(jsonPath("$.nationalId").value("NI-123456"));
     }
 
     @Test
     void getProfile_notFound_returns404() throws Exception {
-        mvc.perform(get("/api/employees/9999/profile"))
-                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/employees/9999/profile").with(user("admin").roles("ADMIN"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getProfile_unauthenticated_returns401() throws Exception {
+        mvc.perform(get("/api/employees/9999/profile")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getProfile_unauthorizedUser_returns403() throws Exception {
+        mvc.perform(get("/api/employees/9999/profile").with(user("user").roles("USER"))).andExpect(status().isForbidden());
     }
 }
