@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.UUID;
 // ── VULNERABILITY V6: Verbose Error Disclosure (CWE-209) ─────────────────────
 // This handler catches every unhandled exception and returns the exception class
 // name and message directly in the HTTP response body.

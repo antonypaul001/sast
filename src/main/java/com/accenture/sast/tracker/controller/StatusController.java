@@ -16,7 +16,7 @@ import org.springframework.web.util.HtmlUtils;
 // Fix: encode the parameter before embedding it, e.g.:
 //   org.springframework.web.util.HtmlUtils.htmlEscape(message)
 // and add a Content-Security-Policy response header to restrict script execution.
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 @RestController
 public class StatusController {
 

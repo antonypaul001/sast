@@ -4,13 +4,14 @@ import com.accenture.sast.tracker.model.AppUser;
 import com.accenture.sast.tracker.repository.AppUserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class AuthService {
-
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     // ── VULNERABILITY V3: Hardcoded Secret (CWE-798) ──────────────────────────
     // A secret embedded in source code is committed to version control and
     // visible to anyone with repository access.
@@ -41,7 +42,7 @@ public class AuthService {
 
     public AppUser register(String username, String password) {
         String hash = hashPassword(password);
-        return userRepository.save(new AppUser(username, hash));
+      return userRepository.save(new AppUser(username, hash));
     }
 
     public boolean authenticate(String username, String password) {
@@ -57,4 +58,7 @@ public class AuthService {
     public String getApiSecret() {
         return apiSecret;
     }
+    public Optional<AppUser> findByUsername(String username) {
+    return userRepository.findByUsername(username);
+}
 }

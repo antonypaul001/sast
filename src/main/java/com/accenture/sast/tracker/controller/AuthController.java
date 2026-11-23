@@ -1,6 +1,8 @@
 package com.accenture.sast.tracker.controller;
 
 import com.accenture.sast.tracker.service.AuthService;
+import com.accenture.sast.tracker.service.EmployeeService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +23,9 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
+   public AuthController(AuthService authService) {
+    this.authService = authService;
+}
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@RequestBody Map<String, String> body) {
@@ -63,4 +65,8 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of(MESSAGE, "Invalid credentials"));
     }
+
+    return ResponseEntity.status(401).body(
+            Map.of("message", "Invalid credentials"));
+}
 }

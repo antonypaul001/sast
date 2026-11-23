@@ -39,6 +39,11 @@ class EmployeeControllerTest {
         repo.deleteAll();
     }
 
+    MockHttpSession session = new MockHttpSession();
+    session.setAttribute("username", "testadmin");
+
+    return session;
+}
     @Test
     void createEmployee_returns201() throws Exception {
         String body = mapper.writeValueAsString(Map.of(
@@ -158,5 +163,34 @@ class EmployeeControllerTest {
         mvc.perform(get("/api/employees/" + savedBob.getId() + "/profile")
                     .session(session))
             .andExpect(status().isForbidden());
+    }
+
+        @Test
+    void getProfile_owner_returns200() throws Exception {
+        Employee emp = new Employee(
+                "Alice Smith",
+                "Engineer",
+                "alice@example.com",
+                LocalDate.of(2026, 12, 1));
+
+        emp.setSalary(new BigDecimal("95000"));
+        emp.setNationalId("NI-123456");
+
+        Employee saved = repo.save(emp);
+
+        AppUser owner = new AppUser("testowner", "unused-test-hash");
+        owner.setRole("USER");
+        owner.setEmployeeId(saved.getId());
+        userRepo.save(owner);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("username", "testowner");
+
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
+                .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Alice Smith"))
+                .andExpect(jsonPath("$.salary").value(95000))
+                .andExpect(jsonPath("$.nationalId").value("NI-123456"));
     }
 }
