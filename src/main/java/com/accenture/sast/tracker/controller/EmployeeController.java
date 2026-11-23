@@ -11,14 +11,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.accenture.sast.tracker.model.AppUser;
+import com.accenture.sast.tracker.service.AuthService;
+import jakarta.servlet.http.HttpSession;
+
+import static com.accenture.sast.tracker.controller.AuthController.AUTHENTICATED_USERNAME;
+
 @RestController
 @RequestMapping("/api/employees")
 public class EmployeeController {
 
     private final EmployeeService service;
+    private final AuthService authService;
 
-    public EmployeeController(EmployeeService service) {
+    public EmployeeController(
+            EmployeeService service,
+            AuthService authService) {
         this.service = service;
+        this.authService = authService;
     }
 
     @PostMapping
@@ -54,17 +64,43 @@ public class EmployeeController {
     // returning sensitive fields.
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/{id}/profile")
-    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id) {
-        Optional<Employee> opt = service.findById(id);
-        if (opt.isEmpty()) {
+    public ResponseEntity<Map<String, Object>> getProfile(
+        @PathVariable Long id,
+        HttpSession session) {
+
+        Object usernameAttribute =
+            session.getAttribute(AUTHENTICATED_USERNAME);
+
+        if (!(usernameAttribute instanceof String username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        Optional<AppUser> user = authService.findByUsername(username);
+
+        if (user.isEmpty() || user.get().getEmployee() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        Employee authorisedEmployee = user.get().getEmployee();
+
+        if (!authorisedEmployee.getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        Optional<Employee> employee = service.findById(id);
+
+        if (employee.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        Employee e = opt.get();
+
+        Employee e = employee.get();
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", e.getId());
         body.put("name", e.getName());
         body.put("salary", e.getSalary());
         body.put("nationalId", e.getNationalId());
+
         return ResponseEntity.ok(body);
     }
 }
