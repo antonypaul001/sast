@@ -15,6 +15,13 @@ public class AppUser {
 
     private String passwordHash;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", unique = true)
+    private Employee employee;
+
+    @Column(nullable = false)
+    private boolean hr;
+
     public AppUser() {}
 
     public AppUser(String username, String passwordHash) {
@@ -27,4 +34,8 @@ public class AppUser {
     public void setUsername(String username)      { this.username = username; }
     public String getPasswordHash()               { return passwordHash; }
     public void setPasswordHash(String h)         { this.passwordHash = h; }
+    public Employee getEmployee()                 { return employee; }
+    public void setEmployee(Employee employee)    { this.employee = employee; }
+    public boolean isHr()                         { return hr; }
+    public void setHr(boolean hr)                 { this.hr = hr; }
 }

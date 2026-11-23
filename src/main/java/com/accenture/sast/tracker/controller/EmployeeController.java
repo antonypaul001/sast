@@ -1,70 +1,88 @@
 package com.accenture.sast.tracker.controller;
 
 import com.accenture.sast.tracker.model.Employee;
+import com.accenture.sast.tracker.service.AuthService;
+import com.accenture.sast.tracker.service.AuthService.ProfileAccess;
 import com.accenture.sast.tracker.service.EmployeeService;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
+import java.math.BigDecimal;
+import java.security.Principal;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/employees")
 public class EmployeeController {
 
     private final EmployeeService service;
+    private final AuthService authService;
 
-    public EmployeeController(EmployeeService service) {
+    public EmployeeController(EmployeeService service, AuthService authService) {
         this.service = service;
+        this.authService = authService;
     }
 
     @PostMapping
-    public ResponseEntity<Employee> create(@RequestBody Employee employee) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(employee));
+    public ResponseEntity<EmployeeResponse> create(@RequestBody CreateEmployeeRequest request) {
+        Employee saved = service.save(new Employee(
+                request.name(), request.role(), request.email(), request.onboardingDate()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(EmployeeResponse.from(saved));
     }
 
     @GetMapping
-    public List<Employee> list() {
-        return service.findAll();
+    public List<EmployeeResponse> list() {
+        return service.findAll().stream().map(EmployeeResponse::from).toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Employee> getById(@PathVariable Long id) {
+    public ResponseEntity<EmployeeResponse> getById(@PathVariable Long id) {
         return service.findById(id)
+                .map(EmployeeResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // The search endpoint is wired to the vulnerable EmployeeService.search()
     @GetMapping("/search")
-    public List<Employee> search(@RequestParam String name) {
-        return service.search(name);
+    public List<EmployeeResponse> search(@RequestParam String name) {
+        return service.search(name).stream().map(EmployeeResponse::from).toList();
     }
 
-    // ── VULNERABILITY V7: Insecure Direct Object Reference (CWE-639) ─────────
-    // Any caller can retrieve any employee's salary and national ID by supplying
-    // an employee ID. There is no check that the requester is authorised to view
-    // that specific employee's sensitive data. Incrementing the id exposes every
-    // record in the system.
-    // Fix: extract the caller's identity from a session or bearer token and verify
-    // that the requesting user either owns the record or holds an admin role before
-    // returning sensitive fields.
-    // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/{id}/profile")
-    public ResponseEntity<Map<String, Object>> getProfile(@PathVariable Long id) {
-        Optional<Employee> opt = service.findById(id);
-        if (opt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        Employee e = opt.get();
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("id", e.getId());
-        body.put("name", e.getName());
-        body.put("salary", e.getSalary());
-        body.put("nationalId", e.getNationalId());
-        return ResponseEntity.ok(body);
+    public ResponseEntity<EmployeeProfile> getProfile(@PathVariable Long id) {
+        return service.findById(id)
+                .map(employee -> new EmployeeProfile(employee.getId(), employee.getName()))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
+
+    @GetMapping("/{id}/private-profile")
+    public ResponseEntity<PrivateEmployeeProfile> getPrivateProfile(@PathVariable Long id, Principal caller) {
+        if (caller == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        ProfileAccess access = authService.profileAccess(caller.getName(), id);
+        if (access == ProfileAccess.DENIED) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        return service.findById(id)
+                .map(employee -> new PrivateEmployeeProfile(employee.getId(), employee.getName(),
+                        employee.getSalary(), access == ProfileAccess.HR ? employee.getNationalId() : null))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    public record CreateEmployeeRequest(String name, String role, String email, LocalDate onboardingDate) {}
+
+    public record EmployeeResponse(Long id, String name, String role, String email, LocalDate onboardingDate) {
+        static EmployeeResponse from(Employee employee) {
+            return new EmployeeResponse(employee.getId(), employee.getName(), employee.getRole(),
+                    employee.getEmail(), employee.getOnboardingDate());
+        }
+    }
+
+    public record EmployeeProfile(Long id, String name) {}
+
+    public record PrivateEmployeeProfile(Long id, String name, BigDecimal salary,
+                                         @JsonInclude(JsonInclude.Include.NON_NULL) String nationalId) {}
 }
