@@ -16,6 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.accenture.sast.tracker.model.AppUser;
+import com.accenture.sast.tracker.service.AuthService;
+import jakarta.servlet.http.HttpSession;
+
+import static com.accenture.sast.tracker.controller.AuthController.AUTHENTICATED_USERNAME;
+
 @RestController
 @RequestMapping("/api/employees")
 public class EmployeeController {
@@ -23,8 +29,9 @@ public class EmployeeController {
     private final EmployeeService service;
     private final AuthService authService;
 
-    public EmployeeController(EmployeeService service,
-                              AuthService authService) {
+    public EmployeeController(
+            EmployeeService service,
+            AuthService authService) {
         this.service = service;
         this.authService = authService;
     }
@@ -58,40 +65,35 @@ public class EmployeeController {
 
     @GetMapping("/{id}/profile")
     public ResponseEntity<Map<String, Object>> getProfile(
-            @PathVariable Long id,
-            HttpServletRequest request) {
+        @PathVariable Long id,
+        HttpSession session) {
 
-        HttpSession session = request.getSession(false);
+        Object usernameAttribute =
+            session.getAttribute(AUTHENTICATED_USERNAME);
 
-        if (session == null ||
-                session.getAttribute("username") == null) {
-            return ResponseEntity.status(401).build();
+        if (!(usernameAttribute instanceof String username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-
-        String username = (String) session.getAttribute("username");
 
         Optional<AppUser> user = authService.findByUsername(username);
 
-        if (user.isEmpty()) {
-            return ResponseEntity.status(401).build();
+        if (user.isEmpty() || user.get().getEmployee() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        AppUser caller = user.get();
+        Employee authorisedEmployee = user.get().getEmployee();
 
-        boolean isAdmin = "ADMIN".equals(caller.getRole());
-        boolean isOwner = id.equals(caller.getEmployeeId());
-
-        if (!isAdmin && !isOwner) {
-            return ResponseEntity.status(403).build();
+        if (!authorisedEmployee.getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        Optional<Employee> opt = service.findById(id);
+        Optional<Employee> employee = service.findById(id);
 
-        if (opt.isEmpty()) {
+        if (employee.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        Employee e = opt.get();
+        Employee e = employee.get();
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", e.getId());

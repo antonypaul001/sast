@@ -7,7 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,28 +23,34 @@ public class ReportController {
     // An attacker can supply: ../../Windows/System32/drivers/etc/hosts
     // to read any file the process has access to, regardless of REPORT_DIR.
     // Fix: resolve the path, then verify it starts with REPORT_DIR:
-    // Path resolved = Paths.get(REPORT_DIR).resolve(filename).normalize();
-    // if (!resolved.startsWith(Paths.get(REPORT_DIR))) throw new ...;
+    //   Path resolved = Paths.get(REPORT_DIR).resolve(filename).normalize();
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/download")
-    public ResponseEntity<Resource> download(@RequestParam String filename) throws IOException {
-        Path baseDir = Paths.get(REPORT_DIR).toAbsolutePath().normalize();
-        Path resolved = baseDir.resolve(filename).normalize();
+public ResponseEntity<Resource> download(@RequestParam String filename) throws IOException {
 
-        if (!resolved.startsWith(baseDir)) {
-            return ResponseEntity.badRequest().build();
-        }
+    Path reportDirectory = Paths.get(REPORT_DIR)
+            .toAbsolutePath()
+            .normalize();
 
-        File file = resolved.toFile();
+    Path filePath = reportDirectory.resolve(filename)
+            .normalize();
 
-        if (!file.exists()) {
-            return ResponseEntity.notFound().build();
-        }
+    if (!filePath.startsWith(reportDirectory)) {
+        return ResponseEntity.badRequest().build();
+    }
 
-        byte[] content = Files.readAllBytes(file.toPath());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new ByteArrayResource(content));
+    if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+        return ResponseEntity.notFound().build();
+    }
+
+    byte[] content = Files.readAllBytes(filePath);
+
+    return ResponseEntity.ok()
+            .header(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + filePath.getFileName() + "\""
+            )
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .body(new ByteArrayResource(content));
     }
 }

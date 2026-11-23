@@ -10,7 +10,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "API_SECRET=test-only-secret")
 @AutoConfigureMockMvc
 class StatusControllerTest {
 
@@ -29,5 +29,15 @@ class StatusControllerTest {
         mvc.perform(get("/api/status").param("message", "Hello World"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Hello World")));
+    }
+
+    @Test
+    void status_scriptMessage_isHtmlEscaped() throws Exception {
+        mvc.perform(get("/api/status")
+            .param("message", "<script>alert(document.cookie)</script>"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("&lt;script&gt;alert(document.cookie)&lt;/script&gt;")
+            ));
     }
 }

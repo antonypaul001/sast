@@ -2,13 +2,12 @@ package com.accenture.sast.tracker.service;
 
 import com.accenture.sast.tracker.model.AppUser;
 import com.accenture.sast.tracker.repository.AppUserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-import java.nio.charset.StandardCharsets;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class AuthService {
@@ -18,12 +17,16 @@ public class AuthService {
     // visible to anyone with repository access.
     // Fix: load from an environment variable or a secrets manager, never from code.
     // ──────────────────────────────────────────────────────────────────────────
-    private static final String API_SECRET = System.getenv("API_SECRET");
 
     private final AppUserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final String apiSecret;
 
-    public AuthService(AppUserRepository userRepository) {
+    public AuthService(
+            AppUserRepository userRepository,
+            @Value("${API_SECRET}") String apiSecret) {
         this.userRepository = userRepository;
+        this.apiSecret = apiSecret;
     }
 
     // ── VULNERABILITY V2: Weak Cryptography (CWE-327) ─────────────────────────
@@ -34,8 +37,8 @@ public class AuthService {
     //      PasswordEncoder interface.
     // ──────────────────────────────────────────────────────────────────────────
     public String hashPassword(String password) {
-    return passwordEncoder.encode(password);
-}
+        return passwordEncoder.encode(password);
+    }
 
     public AppUser register(String username, String password) {
         String hash = hashPassword(password);
@@ -48,8 +51,12 @@ public class AuthService {
         return passwordEncoder.matches(password, user.get().getPasswordHash());
     }
 
+    public Optional<AppUser> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }   
+
     public String getApiSecret() {
-        return API_SECRET;
+        return apiSecret;
     }
     public Optional<AppUser> findByUsername(String username) {
     return userRepository.findByUsername(username);

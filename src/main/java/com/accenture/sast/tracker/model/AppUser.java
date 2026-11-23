@@ -14,8 +14,11 @@ public class AppUser {
     private String username;
 
     private String passwordHash;
-private String role = "USER";
-private Long employeeId;
+
+    @OneToOne
+    @JoinColumn(name = "employee_id", unique = true)
+    private Employee employee;
+
     public AppUser() {}
 
     public AppUser(String username, String passwordHash) {
@@ -29,19 +32,7 @@ private Long employeeId;
     public String getPasswordHash()               { return passwordHash; }
     public void setPasswordHash(String h)         { this.passwordHash = h; }
 
-public String getRole() {
-    return role;
-}
+    public Employee getEmployee()                 { return employee; }
+    public void setEmployee(Employee employee)    { this.employee = employee; }
 
-public void setRole(String role) {
-    this.role = role;
-}
-
-public Long getEmployeeId() {
-    return employeeId;
-}
-
-public void setEmployeeId(Long employeeId) {
-    this.employeeId = employeeId;
-}
 }
