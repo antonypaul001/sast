@@ -1,6 +1,7 @@
 package com.accenture.sast.tracker.service;
 
 import com.accenture.sast.tracker.model.AppUser;
+import com.accenture.sast.tracker.model.Role;
 import com.accenture.sast.tracker.repository.AppUserRepository;
 
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class AuthService {
 
     public AppUser register(String username, String password) {
         String hash = hashPassword(password);
-        return userRepository.save(new AppUser(username, hash));
+        return userRepository.save(new AppUser(username, hash, Role.USER));
     }
 
     public boolean authenticate(String username, String password) {
@@ -47,5 +48,11 @@ public class AuthService {
 
     public String getApiSecret() {
         return apiSecret;
+    }
+
+    public Role findRoleByName(String username) {
+        return userRepository.findByUsername(username)
+                .map(AppUser::getRole)
+                .orElse(null);
     }
 }

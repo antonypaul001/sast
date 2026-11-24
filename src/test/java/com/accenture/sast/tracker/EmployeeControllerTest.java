@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.accenture.sast.tracker.model.Employee;
+import com.accenture.sast.tracker.model.Role;
 import com.accenture.sast.tracker.repository.EmployeeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -113,4 +114,20 @@ class EmployeeControllerTest {
                 .sessionAttr("userId", 1L))
                 .andExpect(status().isForbidden());
     }
+
+    @Test 
+    void getProfile_adminAccess_returnsProfile() throws Exception {
+        Employee emp = new Employee("Bob Jones", "Analyst", "bob@example.com", LocalDate.of(2026, 12, 5));
+        emp.setSalary(new BigDecimal("85000"));
+        emp.setNationalId("NI-654321");
+        Employee saved = repo.save(emp);
+
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
+                .sessionAttr("userRole", Role.ADMIN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Bob Jones"))
+                .andExpect(jsonPath("$.salary").value(85000))
+                .andExpect(jsonPath("$.nationalId").value("NI-654321"));
+    }
+
 }

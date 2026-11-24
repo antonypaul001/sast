@@ -43,6 +43,8 @@ public class AuthController {
         if (authService.authenticate(username, password)) {
             HttpSession session = request.getSession(true);
             session.setAttribute("userId", authService.findUserIdByName(username));
+            session.setAttribute("userEmail", username.trim());
+            session.setAttribute("userRole", authService.findRoleByName(username));
             session.setMaxInactiveInterval(30 * 60);
 
             return ResponseEntity.ok(Map.of("message", "Login successful"));

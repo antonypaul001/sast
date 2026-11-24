@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.accenture.sast.tracker.model.Employee;
 import com.accenture.sast.tracker.model.ProfileUpdateRequest;
+import com.accenture.sast.tracker.model.Role;
 import com.accenture.sast.tracker.service.EmployeeService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,21 +62,24 @@ public class EmployeeController {
             @PathVariable Long id,
             HttpServletRequest request) {
 
-        ResponseEntity<Void> authorizationError = authorizeProfileAccess(request, id);
+        ResponseEntity<Void> authorizationError =
+                authorizeProfileAccess(request, id);
 
         if (authorizationError != null) {
             return ResponseEntity.status(authorizationError.getStatusCode()).build();
         }
 
-        Optional<Employee> opt = service.findById(id);
-        if (opt.isEmpty()) {
+        Optional<Employee> employeeOptional = service.findById(id);
+        if (employeeOptional.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        Employee e = opt.get();
+
+        Employee employee = employeeOptional.get();
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", e.getName());
-        body.put("salary", e.getSalary());
-        body.put("nationalId", e.getNationalId());
+        body.put("name", employee.getName());
+        body.put("email", employee.getEmail());
+        body.put("salary", employee.getSalary());
+        body.put("nationalId", employee.getNationalId());
         return ResponseEntity.ok(body);
     }
 
@@ -85,7 +89,9 @@ public class EmployeeController {
             @PathVariable Long id,
             @RequestBody ProfileUpdateRequest updateRequest,
             HttpServletRequest request) {
-        ResponseEntity<Void> authorizationError = authorizeProfileAccess(request, id);
+
+        ResponseEntity<Void> authorizationError =
+                authorizeProfileAccess(request, id);
 
         if (authorizationError != null) {
             return ResponseEntity.status(authorizationError.getStatusCode()).build();
@@ -114,8 +120,13 @@ public class EmployeeController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Object value = session.getAttribute("userId");
-        if (!(value instanceof Long userId)) {
+        Object roleAttribute = session.getAttribute("userRole");
+        if (roleAttribute instanceof Role userRole && userRole == Role.ADMIN) {
+            return null;
+        }
+
+        Object userIdAttribute = session.getAttribute("userId");
+        if (!(userIdAttribute instanceof Long userId)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
