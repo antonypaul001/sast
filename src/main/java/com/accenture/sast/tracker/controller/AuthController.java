@@ -1,6 +1,10 @@
 package com.accenture.sast.tracker.controller;
 
 import com.accenture.sast.tracker.service.AuthService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -29,16 +33,32 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> body,
+            HttpServletRequest request) {
         String username = body.get("username");
         String password = body.get("password");
 
         log.info("Login attempt: username={}", username);
 
         if (authService.authenticate(username, password)) {
-            return ResponseEntity.ok(Map.of("message", "Login successful",
-                                             "token", authService.getApiSecret()));
+            HttpSession session = request.getSession(true);
+            session.setAttribute("userId", authService.findUserIdByName(username));
+            session.setMaxInactiveInterval(30 * 60);
+
+            return ResponseEntity.ok(Map.of("message", "Login successful"));
         }
+
         return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+
+        if (session != null) {
+            session.invalidate();
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Logged out"));
     }
 }

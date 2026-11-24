@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.accenture.sast.tracker.model.Employee;
@@ -26,12 +25,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 class EmployeeControllerTest {
 
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper mapper;
-    @Autowired EmployeeRepository repo;
+    @Autowired
+    MockMvc mvc;
+    @Autowired
+    ObjectMapper mapper;
+    @Autowired
+    EmployeeRepository repo;
 
     @BeforeEach
-    void clean() { repo.deleteAll(); }
+    void clean() {
+        repo.deleteAll();
+    }
 
     @Test
     void createEmployee_returns201() throws Exception {
@@ -39,11 +43,10 @@ class EmployeeControllerTest {
                 "name", "Alice Smith",
                 "role", "Engineer",
                 "email", "alice@example.com",
-                "onboardingDate", "2026-12-01"
-        ));
+                "onboardingDate", "2026-12-01"));
         mvc.perform(post("/api/employees")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Alice Smith"));
     }
@@ -51,7 +54,7 @@ class EmployeeControllerTest {
     @Test
     void listEmployees_returnsAll() throws Exception {
         repo.save(new Employee("Bob Jones", "Analyst", "bob@example.com", LocalDate.of(2026, 12, 5)));
-        repo.save(new Employee("Carol Lee",  "Manager", "carol@example.com", LocalDate.of(2026, 12, 10)));
+        repo.save(new Employee("Carol Lee", "Manager", "carol@example.com", LocalDate.of(2026, 12, 10)));
 
         mvc.perform(get("/api/employees"))
                 .andExpect(status().isOk())
@@ -67,7 +70,7 @@ class EmployeeControllerTest {
     @Test
     void searchByName_returnsMatchingEmployee() throws Exception {
         repo.save(new Employee("Diana Prince", "Developer", "diana@example.com", LocalDate.of(2026, 12, 15)));
-        repo.save(new Employee("Eve Adams",    "Tester",    "eve@example.com",   LocalDate.of(2026, 12, 20)));
+        repo.save(new Employee("Eve Adams", "Tester", "eve@example.com", LocalDate.of(2026, 12, 20)));
 
         mvc.perform(get("/api/employees/search").param("name", "diana"))
                 .andExpect(status().isOk())
@@ -82,7 +85,6 @@ class EmployeeControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
-    @WithMockUser(username = "admin", roles = "ADMIN")
     @Test
     void getProfile_returnsProfile() throws Exception {
         Employee emp = new Employee("Alice Smith", "Engineer", "alice@example.com", LocalDate.of(2026, 12, 1));
@@ -90,23 +92,25 @@ class EmployeeControllerTest {
         emp.setNationalId("NI-123456");
         Employee saved = repo.save(emp);
 
-        mvc.perform(get("/api/employees/" + saved.getId() + "/profile"))
+        mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
+                .sessionAttr("userId", saved.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Alice Smith"))
                 .andExpect(jsonPath("$.salary").value(95000))
                 .andExpect(jsonPath("$.nationalId").value("NI-123456"));
     }
 
-    @WithMockUser(username = "admin", roles = "ADMIN")
     @Test
     void getProfile_notFound_returns404() throws Exception {
-        mvc.perform(get("/api/employees/9999/profile"))
+        mvc.perform(get("/api/employees/9999/profile")
+                .sessionAttr("userId", 9999L))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void getProfile_unauthenticated_returns403() throws Exception {
-        mvc.perform(get("/api/employees/9999/profile"))
+        mvc.perform(get("/api/employees/9999/profile")
+                .sessionAttr("userId", 1L))
                 .andExpect(status().isForbidden());
     }
 }

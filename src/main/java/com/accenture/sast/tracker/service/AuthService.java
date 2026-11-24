@@ -40,6 +40,11 @@ public class AuthService {
         return passwordEncoder.matches(password, user.get().getPasswordHash());
     }
 
+    public Long findUserIdByName(String username) {
+        Optional<AppUser> user = userRepository.findByUsername(username);
+        return user.map(AppUser::getId).orElse(null);
+    }
+
     public String getApiSecret() {
         return apiSecret;
     }
