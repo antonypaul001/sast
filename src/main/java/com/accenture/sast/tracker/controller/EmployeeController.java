@@ -62,8 +62,7 @@ public class EmployeeController {
             @PathVariable Long id,
             HttpServletRequest request) {
 
-        ResponseEntity<Void> authorizationError =
-                authorizeProfileAccess(request, id);
+        ResponseEntity<Void> authorizationError = authorizeProfileAccess(request, id);
 
         if (authorizationError != null) {
             return ResponseEntity.status(authorizationError.getStatusCode()).build();
@@ -90,8 +89,7 @@ public class EmployeeController {
             @RequestBody ProfileUpdateRequest updateRequest,
             HttpServletRequest request) {
 
-        ResponseEntity<Void> authorizationError =
-                authorizeProfileAccess(request, id);
+        ResponseEntity<Void> authorizationError = authorizeProfileAccess(request, id);
 
         if (authorizationError != null) {
             return ResponseEntity.status(authorizationError.getStatusCode()).build();
@@ -120,17 +118,28 @@ public class EmployeeController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Object roleAttribute = session.getAttribute("userRole");
-        if (roleAttribute instanceof Role userRole && userRole == Role.ADMIN) {
-            return null;
-        }
+        Object role = session.getAttribute("userRole");
+        Object email = session.getAttribute("userEmail");
 
-        Object userIdAttribute = session.getAttribute("userId");
-        if (!(userIdAttribute instanceof Long userId)) {
+        if (!(role instanceof Role userRole)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (!userId.equals(requestedId)) {
+        if (userRole == Role.ADMIN) {
+            return null;
+        }
+
+        if (!(email instanceof String userEmail)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Employee employee = service.findById(requestedId).orElse(null);
+
+        boolean ownsProfile = employee != null
+                && employee.getEmail() != null
+                && employee.getEmail().equalsIgnoreCase(userEmail.trim());
+
+        if (!ownsProfile) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

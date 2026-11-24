@@ -94,7 +94,8 @@ class EmployeeControllerTest {
         Employee saved = repo.save(emp);
 
         mvc.perform(get("/api/employees/" + saved.getId() + "/profile")
-                .sessionAttr("userId", saved.getId()))
+                .sessionAttr("userRole", Role.USER)
+                .sessionAttr("userEmail", saved.getEmail()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Alice Smith"))
                 .andExpect(jsonPath("$.salary").value(95000))
@@ -102,20 +103,28 @@ class EmployeeControllerTest {
     }
 
     @Test
-    void getProfile_notFound_returns404() throws Exception {
+    void getProfile_forNonExistentUser_returns403() throws Exception {
         mvc.perform(get("/api/employees/9999/profile")
-                .sessionAttr("userId", 9999L))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void getProfile_unauthenticated_returns403() throws Exception {
-        mvc.perform(get("/api/employees/9999/profile")
-                .sessionAttr("userId", 1L))
+                .sessionAttr("userRole", Role.USER)
+                .sessionAttr("userEmail", "user.which.is.not.employee.yet@example.com"))
                 .andExpect(status().isForbidden());
     }
 
-    @Test 
+    @Test
+    void getProfile_forAnotherUser_returns403() throws Exception {
+        Employee employee = repo.save(new Employee(
+                "Alice Smith",
+                "Engineer",
+                "alice@example.com",
+                LocalDate.of(2026, 12, 1)));
+
+        mvc.perform(get("/api/employees/" + employee.getId() + "/profile")
+                .sessionAttr("userRole", Role.USER)
+                .sessionAttr("userEmail", "other@example.com"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void getProfile_adminAccess_returnsProfile() throws Exception {
         Employee emp = new Employee("Bob Jones", "Analyst", "bob@example.com", LocalDate.of(2026, 12, 5));
         emp.setSalary(new BigDecimal("85000"));
@@ -130,4 +139,10 @@ class EmployeeControllerTest {
                 .andExpect(jsonPath("$.nationalId").value("NI-654321"));
     }
 
+    @Test
+    void getProfile_adminAccess_returns404() throws Exception {
+        mvc.perform(get("/api/employees/9999/profile")
+                .sessionAttr("userRole", Role.ADMIN))
+                .andExpect(status().isNotFound());
+    }
 }
